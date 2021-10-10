@@ -45,7 +45,6 @@ To run the demo follow these steps:
 export const fbConfig = {
   apiKey: xxx-xxx-xxx-xxx-xxx-xxx-xxx-xxx,
   authDomain: xxx-xxx-xxx-xxx-xxx-xxx-xxx-xxx,
-  databaseURL: xxx-xxx-xxx-xxx-xxx-xxx-xxx-xxx,
   projectId: xxx-xxx-xxx-xxx-xxx-xxx-xxx-xxx,
   storageBucket: xxx-xxx-xxx-xxx-xxx-xxx-xxx-xxx,
   messagingSenderId: xxx-xxx-xxx-xxx-xxx-xxx-xxx-xxx,
