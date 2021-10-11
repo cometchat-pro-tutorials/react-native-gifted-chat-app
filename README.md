@@ -2,6 +2,8 @@
 
 Read the full tutorial here: [**>> How to Build a React Native Gifted Chat App [with CometChat SDK]**](https://www.cometchat.com/tutorials/#)
 
+[Live Demo](https://www.dropbox.com/s/kbffa21aexp4dzd/rn-gifted-chat-app.mov?dl=0)
+
 This example shows How to Build a React Native Gifted Chat App [with CometChat SDK]:
 
 ## Technology
@@ -64,6 +66,7 @@ export const cometChatConfig = {
 13. Run the app on iOS using npx react-native run-ios & on Android using npx react-native run-android
 14. Make sure to include env.js in your gitIgnore file from being exposed online.
 15. If you would like to test your application on IOS and you are using a Macbook - Apple Chip, you need to follow this link to configure your xcode and your ios project. [CometChat - Set up for IOS](https://prodocs.cometchat.com/docs/ios-setup)
+16. If you would like to test your application on Android and you have to face with an issue related to ANDROIRD_ROOT_SDK. Please refer to this [link](https://stackoverflow.com/questions/27620262/sdk-location-not-found-define-location-with-sdk-dir-in-the-local-properties-fil) to get the solution.
 
 Questions about running the demo? [Open an issue](https://github.com/hieptl/react-native-gifted-chat-app/issues). We're here to help ✌️
 
