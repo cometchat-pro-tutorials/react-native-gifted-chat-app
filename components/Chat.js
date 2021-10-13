@@ -22,7 +22,6 @@ const Chat = () => {
   const [callSettings, setCallSettings] = useState(null);
 
   useEffect(() => {
-    console.log(callType);
     if (callType && selectedConversation) {
       initialCall();
     }
@@ -221,7 +220,7 @@ const Chat = () => {
     if (isValidMessage(message)) {
       let transformedMessage = {
         _id: message.id,
-        createdAt: new Date(message.sentAt),
+        createdAt: new Date(message.sentAt * 1000),
         user: {
           _id: message.sender.uid,
           name: message.sender.name,
@@ -293,7 +292,9 @@ const Chat = () => {
     } else if (selectedConversation.contactType === 0) {
       messageRequestBuilder.setUID(selectedConversation.uid);
     }
-    const messagesRequest = messageRequestBuilder.build();
+    const messagesRequest = messageRequestBuilder
+      .setCategories(["message"])
+      .build();
     messagesRequest
       .fetchPrevious()
       .then((messages) => {
