@@ -124,8 +124,15 @@ const App = () => {
   };
 
   const renderChatHeaderTitle = () => {
+    console.log('selected conversation');
+    console.log(selectedConversation);
     if (selectedConversation && selectedConversation.name) {
-      return <Text style={styles.chatHeaderTitle}>{selectedConversation.name}</Text>
+      return (
+        <View style={styles.chatHeaderTitleContainer}>
+          <Text style={styles.chatHeaderTitle}>{selectedConversation.name}</Text>
+          {selectedConversation.status && <Text style={[styles.chatHeaderTitle, styles.chatHeaderStatus]}> - {selectedConversation.status}</Text>}
+        </View>
+      );
     }
     return <Text style={styles.chatHeaderTitle}>Chat</Text>;
   };
@@ -244,9 +251,15 @@ const styles = StyleSheet.create({
   chatHeaderActions: {
     flexDirection: 'row'
   },
+  chatHeaderTitleContainer: {
+    flexDirection: 'row'
+  },
   chatHeaderTitle: {
     fontSize: 16,
     fontWeight: 'bold'
+  },
+  chatHeaderStatus: {
+    textTransform: 'capitalize'
   }
 });
 
