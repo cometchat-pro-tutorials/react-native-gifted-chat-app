@@ -8,7 +8,7 @@
 
 import React, { useEffect, useState } from 'react';
 
-import { TouchableOpacity, Image, Alert, StyleSheet, View, Platform, PermissionsAndroid } from 'react-native';
+import { TouchableOpacity, Image, Alert, StyleSheet, View, Platform, PermissionsAndroid, Text } from 'react-native';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -113,7 +113,6 @@ const App = () => {
 
   const startAudioCall = () => {
     if (cometChat && selectedConversation) {
-      console.log('start audio call');
       setCallType(cometChat.CALL_TYPE.AUDIO);
     }
   };
@@ -122,6 +121,13 @@ const App = () => {
     if (cometChat && selectedConversation) {
       setCallType(cometChat.CALL_TYPE.VIDEO);
     }
+  };
+
+  const renderChatHeaderTitle = () => {
+    if (selectedConversation && selectedConversation.name) {
+      return <Text style={styles.chatHeaderTitle}>{selectedConversation.name}</Text>
+    }
+    return <Text style={styles.chatHeaderTitle}>Chat</Text>;
   };
 
   const renderChatHeaderRight = (navigation) => {
@@ -206,6 +212,7 @@ const App = () => {
             })} />
             <Stack.Screen name="Create Group" component={CreateGroup} />
             <Stack.Screen name="Chat" component={Chat} options={({ navigation }) => ({
+              headerTitle: () => renderChatHeaderTitle(),
               headerRight: () => renderChatHeaderRight(navigation),
             })} />
             <Stack.Screen name="Manage Group" component={ManageGroup} />
@@ -236,6 +243,10 @@ const App = () => {
 const styles = StyleSheet.create({
   chatHeaderActions: {
     flexDirection: 'row'
+  },
+  chatHeaderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold'
   }
 });
 
