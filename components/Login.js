@@ -100,12 +100,14 @@ const Login = (props) => {
         autoCapitalize='none'
         onChangeText={onEmailChanged}
         placeholder="Email"
+        placeholderTextColor="#ccc"
         style={styles.input}
       />
       <TextInput
         autoCapitalize='none'
         onChangeText={onPasswordChanged}
         placeholder="Password"
+        placeholderTextColor="#ccc"
         secureTextEntry
         style={styles.input}
       />

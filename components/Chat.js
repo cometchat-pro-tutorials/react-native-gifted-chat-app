@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform, Modal } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform, Modal, Image } from 'react-native';
 
 import { GiftedChat } from 'react-native-gifted-chat';
 import DocumentPicker from 'react-native-document-picker';
@@ -12,14 +12,19 @@ import { v4 as uuidv4 } from "uuid";
 
 import Context from '../context';
 
-const Chat = () => {
+const Chat = (props) => {
+  const { navigation } = props;
+
   const callListenerId = useRef(uuidv4());
+  const userOnlineListenerId = useRef(uuidv4());
 
   const { cometChat, selectedConversation, user, callType, setCallType } = useContext(Context);
 
   const [messages, setMessages] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [callSettings, setCallSettings] = useState(null);
+  const [call, setCall] = useState(null);
+  const [isSomeoneCalling, setIsSomeoneCalling] = useState(false);
 
   useEffect(() => {
     if (callType && selectedConversation) {
@@ -33,6 +38,8 @@ const Chat = () => {
       loadMessages();
       // listen for messages.
       listenForMessages();
+      // listen for online users.
+      listenForOnlineUsers();
     }
     return () => {
       if (selectedConversation) {
@@ -41,8 +48,11 @@ const Chat = () => {
           cometChat.removeMessageListener();
         }
         setCallType(null);
+        setCall(null);
+        setIsSomeoneCalling(false);
         setMessages(() => []);
         cometChat.removeCallListener(callListenerId);
+        cometChat.removeUserListener(userOnlineListenerId);
       }
     }
   }, [selectedConversation]);
@@ -66,6 +76,8 @@ const Chat = () => {
           console.log("Call rejected successfully", call);
           setCallSettings(null);
           setCallType(null);
+          setCall(null);
+          setIsSomeoneCalling(false);
         },
         error => {
           console.log("Call rejection failed with error:", error);
@@ -99,12 +111,16 @@ const Chat = () => {
         rejectCall(status, call.sessionId);
         setCallSettings(null);
         setCallType(null);
+        setCall(null);
+        setIsSomeoneCalling(false);
       },
       onError: error => {
         console.log("Error :", error);
         /* hiding/closing the call screen can be done here. */
         setCallSettings(null);
         setCallType(null);
+        setCall(null);
+        setIsSomeoneCalling(false);
       },
       onAudioModesUpdated: (audioModes) => {
         console.log("audio modes:", audioModes);
@@ -126,6 +142,7 @@ const Chat = () => {
           console.log("Call accepted successfully:", call);
           // start the call using the startCall() method
           startCall(call);
+          setIsSomeoneCalling(false);
         },
         error => {
           console.log("Call acceptance failed with error", error);
@@ -137,18 +154,9 @@ const Chat = () => {
 
   const confirmCall = (call) => {
     if (call) {
-      Alert.alert(
-        "Confirm",
-        "You are having a call?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-            onPress: () => rejectCall(cometChat.CALL_STATUS.REJECTED, call)
-          },
-          { text: "OK", onPress: () => acceptCall(call) }
-        ]
-      );
+      console.log('incoming call: ');
+      console.log(call);
+      setIsSomeoneCalling(true);
     }
   };
 
@@ -158,7 +166,11 @@ const Chat = () => {
       new cometChat.CallListener({
         onIncomingCallReceived(call) {
           console.log("Incoming call:", call);
-          confirmCall(call);
+          const callInitiatorUid = call.callInitiator.uid;
+          if (callInitiatorUid && callInitiatorUid !== user.uid) {
+            setCall(call);
+            confirmCall(call);
+          }
         },
         onOutgoingCallAccepted(call) {
           console.log("Outgoing call accepted:", call);
@@ -168,11 +180,15 @@ const Chat = () => {
           console.log("Outgoing call rejected:", call);
           setCallSettings(null);
           setCallType(null);
+          setCall(null);
+          setIsSomeoneCalling(null);
         },
         onIncomingCallCancelled(call) {
           console.log("Incoming call calcelled:", call);
           setCallSettings(null);
           setCallType(null);
+          setCall(null);
+          setIsSomeoneCalling(null);
         }
       })
     );
@@ -191,6 +207,7 @@ const Chat = () => {
     cometChat.initiateCall(call).then(
       outGoingCall => {
         console.log("Call initiated successfully:", outGoingCall);
+        setCall(outGoingCall);
         // perform action on success. Like show your calling screen.
       },
       error => {
@@ -259,6 +276,38 @@ const Chat = () => {
       });;
     }
     return [];
+  };
+
+  const renderChatHeaderTitle = (onlineUser) => {
+    if (onlineUser && onlineUser.name) {
+      return (
+        <View style={styles.chatHeaderTitleContainer}>
+          <Text style={styles.chatHeaderTitle}>{onlineUser.name}</Text>
+          {onlineUser.status && <Text style={[styles.chatHeaderTitle, styles.chatHeaderStatus]}> - {onlineUser.status}</Text>}
+        </View>
+      );
+    }
+    return <Text style={styles.chatHeaderTitle}>Chat</Text>;
+  };
+
+  const listenForOnlineUsers = () => {
+    cometChat.addUserListener(
+      userOnlineListenerId,
+      new cometChat.UserListener({
+        onUserOnline: onlineUser => {
+          console.log("On User Online:");
+          console.log(onlineUser);
+          if (onlineUser && onlineUser.uid === selectedConversation.uid) {
+            navigation.setOptions({
+              headerTitle: () => renderChatHeaderTitle(onlineUser),
+            })
+          }
+        },
+        onUserOffline: offlineUser => {
+          console.log("On User Offline:", { offlineUser });
+        }
+      })
+    );
   };
 
   /**
@@ -380,10 +429,6 @@ const Chat = () => {
     sendMessageCometChat(messages);
   }, [])
 
-  const isValidFile = (name) => {
-    return name && (name.includes('jpg') || name.includes('mp3') || name.includes('mp4'));
-  }
-
   const onSelect = async () => {
     // Pick a single file
     try {
@@ -391,14 +436,14 @@ const Chat = () => {
         type: [DocumentPicker.types.allFiles],
       });
       const res = resArr && resArr.length !== 0 ? resArr[0] : null;
-      if (res && res.name && res.uri && isValidFile(res.name)) {
+      if (res && res.name && res.uri) {
         const file = {
           name: res.name,
           uri: res.uri.replace("file://", ""),
         };
         setSelectedFile(() => file);
       } else {
-        showMessage('Error', 'You just can upload image, audio and video files (jpg, mp3, and mp4)');
+        showMessage('Error', 'Cannot upload your file, please try again');
       }
     } catch (err) {
       if (DocumentPicker.isCancel(err)) {
@@ -446,10 +491,59 @@ const Chat = () => {
     return <></>;
   };
 
+  const cancelCall = () => {
+    const status = cometChat.CALL_STATUS.CANCELLED;
+    rejectCall(status, call);
+  };
+
+  const handleRejectCall = () => {
+    const status = cometChat.CALL_STATUS.REJECTED;
+    rejectCall(status, call);
+  };
+
+  const handleAcceptCall = () => {
+    acceptCall(call);
+  };
+
+  if (isSomeoneCalling && call) {
+    return (
+      <Modal animated animationType="fade">
+        <View style={styles.waitingForCallContainer}>
+          <Text style={styles.waitingForCallContainerTitle}>You are having a call from {call.sender.name}</Text>
+          <View style={styles.waitingForCallImageContainer}>
+            <Image style={{ width: 128, height: 128 }} source={{ uri: call.sender.avatar }}></Image>
+          </View>
+          <TouchableOpacity style={styles.acceptCallBtn} onPress={handleAcceptCall}>
+            <Text style={styles.acceptCallLabel}>Accept Call</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelCallBtn} onPress={handleRejectCall}>
+            <Text style={styles.cancelCallLabel}>Reject Call</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    );
+  }
+
+  if (callType && selectedConversation && !callSettings) {
+    return (
+      <Modal animated animationType="fade">
+        <View style={styles.waitingForCallContainer}>
+          <Text style={styles.waitingForCallContainerTitle}>Calling {selectedConversation.name}...</Text>
+          <View style={styles.waitingForCallImageContainer}>
+            <Image style={{ width: 128, height: 128 }} source={{ uri: selectedConversation.avatar }}></Image>
+          </View>
+          <TouchableOpacity style={styles.cancelCallBtn} onPress={cancelCall}>
+            <Text style={styles.cancelCallLabel}>Cancel Call</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    );
+  }
+
   if (callSettings) {
     return (
       <Modal animated animationType="fade">
-        <View style={{ height: '100%', width: '100%', position: 'relative' }}>
+        <View style={styles.callingScreenContainer}>
           <KeepAwake />
           <cometChat.CallingComponent
             callsettings={callSettings}
@@ -481,7 +575,6 @@ const Chat = () => {
     )
   }
 };
-
 const styles = StyleSheet.create({
   select: {
     alignSelf: 'center',
@@ -505,6 +598,67 @@ const styles = StyleSheet.create({
     width: 242,
     borderRadius: 20,
     margin: 4,
+  },
+  callingScreenContainer: {
+    height: '100%',
+    position: 'relative',
+    width: '100%',
+  },
+  waitingForCallContainer: {
+    flexDirection: 'column',
+    height: '100%',
+    position: 'relative',
+    width: '100%',
+    flex: 1,
+    paddingTop: 128
+  },
+  waitingForCallContainerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    paddingVertical: 12,
+    textAlign: 'center',
+  },
+  waitingForCallImageContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelCallBtn: {
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    fontSize: 16,
+    marginHorizontal: 24,
+    marginVertical: 8,
+    padding: 16,
+  },
+  cancelCallLabel: {
+    color: '#fff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  acceptCallBtn: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 8,
+    fontSize: 16,
+    marginHorizontal: 24,
+    marginVertical: 8,
+    padding: 16,
+  },
+  acceptCallLabel: {
+    color: '#fff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  chatHeaderTitleContainer: {
+    flexDirection: 'row'
+  },
+  chatHeaderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+  chatHeaderStatus: {
+    textTransform: 'capitalize'
   }
 });
 

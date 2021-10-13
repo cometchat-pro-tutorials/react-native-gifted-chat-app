@@ -27,6 +27,11 @@ import Context from './context';
 import { cometChatConfig } from './env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// import icons
+import audioCallIcon from './images/audioCall.png';
+import videoCallIcon from './images/videoCall.png';
+import settingsIcon from './images/settings.png';
+
 const Stack = createNativeStackNavigator();
 
 const App = () => {
@@ -89,12 +94,19 @@ const App = () => {
   };
 
   const handleLogout = (navigation) => {
-    AsyncStorage.removeItem('auth');
-    setUser(null);
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Login' }]
-    });
+    cometChat.logout().then(
+      () => {
+        console.log("Logout completed successfully");
+        AsyncStorage.removeItem('auth');
+        setUser(null);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }]
+        });
+      }, error => {
+        console.log("Logout failed with exception:", { error });
+      }
+    );
   };
 
   const logout = (navigation) => () => {
@@ -124,8 +136,6 @@ const App = () => {
   };
 
   const renderChatHeaderTitle = () => {
-    console.log('selected conversation');
-    console.log(selectedConversation);
     if (selectedConversation && selectedConversation.name) {
       return (
         <View style={styles.chatHeaderTitleContainer}>
@@ -144,25 +154,19 @@ const App = () => {
           <TouchableOpacity onPress={startAudioCall}>
             <Image
               style={{ width: 24, height: 24, marginRight: 8 }}
-              source={{
-                uri: 'https://cdn.icon-icons.com/icons2/2440/PNG/512/phone_call_icon_148513.png'
-              }}
+              source={audioCallIcon}
             />
           </TouchableOpacity>
           <TouchableOpacity onPress={startVideoCall}>
             <Image
-              style={{ width: 24, height: 24, marginRight: 8 }}
-              source={{
-                uri: 'https://icons-for-free.com/iconfiles/png/512/video+icon-1320184286352302753.png'
-              }}
+              style={{ width: 32, height: 24, marginRight: 8 }}
+              source={videoCallIcon}
             />
           </TouchableOpacity>
           <TouchableOpacity onPress={manageGroup(navigation)}>
             <Image
               style={{ width: 24, height: 24 }}
-              source={{
-                uri: 'https://www.iconpacks.net/icons/2/free-settings-icon-3110-thumb.png'
-              }}
+              source={settingsIcon}
             />
           </TouchableOpacity>
         </View>
@@ -173,17 +177,13 @@ const App = () => {
         <TouchableOpacity onPress={startAudioCall}>
           <Image
             style={{ width: 24, height: 24, marginRight: 8 }}
-            source={{
-              uri: 'https://cdn.icon-icons.com/icons2/2440/PNG/512/phone_call_icon_148513.png'
-            }}
+            source={audioCallIcon}
           />
         </TouchableOpacity>
         <TouchableOpacity onPress={startVideoCall}>
           <Image
-            style={{ width: 24, height: 24 }}
-            source={{
-              uri: 'https://icons-for-free.com/iconfiles/png/512/video+icon-1320184286352302753.png'
-            }}
+            style={{ width: 32, height: 24 }}
+            source={videoCallIcon}
           />
         </TouchableOpacity>
       </View>
