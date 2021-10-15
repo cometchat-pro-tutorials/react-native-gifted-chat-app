@@ -78,7 +78,6 @@ const Chat = (props) => {
       }
       if (message.data && message.data.url) {
         if (message.type && message.type === 'video') {
-          console.log('Here you are!!!');
           transformedMessage.video = message.data.url;
         } else {
           transformedMessage.image = message.data.url;
@@ -334,7 +333,6 @@ const Chat = (props) => {
           }}
           renderActions={renderActions}
           renderMessageVideo={renderVideo}
-          renderMessageAudio={renderVideo}
         />
       </View>
     </>
