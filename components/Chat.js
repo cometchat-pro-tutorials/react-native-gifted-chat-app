@@ -1,36 +1,27 @@
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform, Modal, Image } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform, Image } from 'react-native';
 
 import { GiftedChat } from 'react-native-gifted-chat';
 import DocumentPicker from 'react-native-document-picker';
-import KeepAwake from 'react-native-keep-awake';
+import { launchImageLibrary } from 'react-native-image-picker';
 import Video from 'react-native-video';
-// At the top where our imports are...
 import VideoPlayer from 'react-native-video-controls';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from "uuid";
 
 import Context from '../context';
 
+import imageIcon from '../images/image.png';
+
 const Chat = (props) => {
   const { navigation } = props;
 
-  const callListenerId = useRef(uuidv4());
   const userOnlineListenerId = useRef(uuidv4());
 
-  const { cometChat, selectedConversation, user, callType, setCallType } = useContext(Context);
+  const { cometChat, selectedConversation, user } = useContext(Context);
 
   const [messages, setMessages] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [callSettings, setCallSettings] = useState(null);
-  const [call, setCall] = useState(null);
-  const [isSomeoneCalling, setIsSomeoneCalling] = useState(false);
-
-  useEffect(() => {
-    if (callType && selectedConversation) {
-      initialCall();
-    }
-  }, [callType]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -47,11 +38,7 @@ const Chat = (props) => {
         if (conversationId) {
           cometChat.removeMessageListener();
         }
-        setCallType(null);
-        setCall(null);
-        setIsSomeoneCalling(false);
         setMessages(() => []);
-        cometChat.removeCallListener(callListenerId);
         cometChat.removeUserListener(userOnlineListenerId);
       }
     }
@@ -63,163 +50,9 @@ const Chat = (props) => {
     }
   }, [selectedFile]);
 
-  useEffect(() => {
-    if (cometChat) {
-      listenForCall();
-    }
-  }, [cometChat]);
-
-  const rejectCall = (status, call) => {
-    if (status && call) {
-      cometChat.rejectCall(call.sessionId, status).then(
-        call => {
-          console.log("Call rejected successfully", call);
-          setCallSettings(null);
-          setCallType(null);
-          setCall(null);
-          setIsSomeoneCalling(false);
-        },
-        error => {
-          console.log("Call rejection failed with error:", error);
-        }
-      );
-    }
-  };
-
-  const startCall = (call) => {
-    const sessionId = call.sessionId;
-    const callType = call.type;
-    const callListener = new cometChat.OngoingCallListener({
-      onUserJoined: user => {
-        /* Notification received here if another user joins the call. */
-        console.log("User joined call:", user);
-        /* this method can be use to display message or perform any actions if someone joining the call */
-      },
-      onUserLeft: user => {
-        /* Notification received here if another user left the call. */
-        console.log("User left call:", user);
-        /* this method can be use to display message or perform any actions if someone leaving the call */
-      },
-      onUserListUpdated: userList => {
-        console.log("user list:", userList);
-      },
-      onCallEnded: call => {
-        /* Notification received here if current ongoing call is ended. */
-        console.log("Call ended:", call);
-        /* hiding/closing the call screen can be done here. */
-        const status = cometChat.CALL_STATUS.CANCELLED;
-        rejectCall(status, call.sessionId);
-        setCallSettings(null);
-        setCallType(null);
-        setCall(null);
-        setIsSomeoneCalling(false);
-      },
-      onError: error => {
-        console.log("Error :", error);
-        /* hiding/closing the call screen can be done here. */
-        setCallSettings(null);
-        setCallType(null);
-        setCall(null);
-        setIsSomeoneCalling(false);
-      },
-      onAudioModesUpdated: (audioModes) => {
-        console.log("audio modes:", audioModes);
-      },
-    });
-    const callSettings = new cometChat.CallSettingsBuilder()
-      .setSessionID(sessionId)
-      .enableDefaultLayout(true)
-      .setIsAudioOnlyCall(callType == cometChat.CALL_TYPE.AUDIO ? true : false)
-      .setCallEventListener(callListener)
-      .build();
-    setCallSettings(() => callSettings);
-  };
-
-  const acceptCall = (call) => {
-    if (call) {
-      cometChat.acceptCall(call.sessionId).then(
-        call => {
-          console.log("Call accepted successfully:", call);
-          // start the call using the startCall() method
-          startCall(call);
-          setIsSomeoneCalling(false);
-        },
-        error => {
-          console.log("Call acceptance failed with error", error);
-          // handle exception
-        }
-      );
-    }
-  };
-
-  const confirmCall = (call) => {
-    if (call) {
-      console.log('incoming call: ');
-      console.log(call);
-      setIsSomeoneCalling(true);
-    }
-  };
-
-  const listenForCall = () => {
-    cometChat.addCallListener(
-      callListenerId,
-      new cometChat.CallListener({
-        onIncomingCallReceived(call) {
-          console.log("Incoming call:", call);
-          const callInitiatorUid = call.callInitiator.uid;
-          if (callInitiatorUid && callInitiatorUid !== user.uid) {
-            setCall(call);
-            confirmCall(call);
-          }
-        },
-        onOutgoingCallAccepted(call) {
-          console.log("Outgoing call accepted:", call);
-          startCall(call);
-        },
-        onOutgoingCallRejected(call) {
-          console.log("Outgoing call rejected:", call);
-          setCallSettings(null);
-          setCallType(null);
-          setCall(null);
-          setIsSomeoneCalling(null);
-        },
-        onIncomingCallCancelled(call) {
-          console.log("Incoming call calcelled:", call);
-          setCallSettings(null);
-          setCallType(null);
-          setCall(null);
-          setIsSomeoneCalling(null);
-        }
-      })
-    );
-  };
-
-  const isGroup = () => {
-    return selectedConversation && selectedConversation.guid;
-  };
-
-  const initialCall = () => {
-    const receiverID = isGroup() ? selectedConversation.guid : selectedConversation.uid;
-    const receiverType = isGroup() ? cometChat.RECEIVER_TYPE.GROUP : cometChat.RECEIVER_TYPE.USER;
-
-    const call = new cometChat.Call(receiverID, callType, receiverType);
-
-    cometChat.initiateCall(call).then(
-      outGoingCall => {
-        console.log("Call initiated successfully:", outGoingCall);
-        setCall(outGoingCall);
-        // perform action on success. Like show your calling screen.
-      },
-      error => {
-        console.log("Call initialization failed with exception:", error);
-      }
-    );
-  };
-
   const isValidMessage = (message) => {
     return message &&
       message.id &&
-      (message.text || message.type === 'file') &&
       message.sentAt &&
       message.sender &&
       message.sender.uid &&
@@ -229,14 +62,10 @@ const Chat = (props) => {
       message.category === 'message'
   };
 
-  const isVideo = (url) => url && url.includes('mp4');
-
-  const isAudio = (url) => url && url.includes('mp3');
-
   const transformSingleMessage = (message) => {
     if (isValidMessage(message)) {
       let transformedMessage = {
-        _id: message.id,
+        _id: message.id ? message.id : uuidv4(),
         createdAt: new Date(message.sentAt * 1000),
         user: {
           _id: message.sender.uid,
@@ -247,11 +76,10 @@ const Chat = (props) => {
       if (message.text) {
         transformedMessage.text = message.text;
       }
-      if (message.type === 'file' && message.data && message.data.url) {
-        if (isVideo(message.data.url)) {
+      if (message.data && message.data.url) {
+        if (message.type && message.type === 'video') {
+          console.log('Here you are!!!');
           transformedMessage.video = message.data.url;
-        } else if (isAudio(message.data.url)) {
-          transformedMessage.audio = message.data.url;
         } else {
           transformedMessage.image = message.data.url;
         }
@@ -295,8 +123,6 @@ const Chat = (props) => {
       userOnlineListenerId,
       new cometChat.UserListener({
         onUserOnline: onlineUser => {
-          console.log("On User Online:");
-          console.log(onlineUser);
           if (onlineUser && onlineUser.uid === selectedConversation.uid) {
             navigation.setOptions({
               headerTitle: () => renderChatHeaderTitle(onlineUser),
@@ -304,7 +130,11 @@ const Chat = (props) => {
           }
         },
         onUserOffline: offlineUser => {
-          console.log("On User Offline:", { offlineUser });
+          if (offlineUser && offlineUser.uid === selectedConversation.uid) {
+            navigation.setOptions({
+              headerTitle: () => renderChatHeaderTitle(offlineUser),
+            })
+          }
         }
       })
     );
@@ -355,7 +185,7 @@ const Chat = (props) => {
   const sendMediaMessageCometChat = () => {
     const receiverID = getReceiverId();
     const receiverType = getReceiverType();
-    const messageType = cometChat.MESSAGE_TYPE.FILE;
+    const messageType = selectedFile && selectedFile.type && selectedFile.type.includes('video') ? cometChat.MESSAGE_TYPE.VIDEO : cometChat.MESSAGE_TYPE.FILE;
 
     if (receiverID && receiverType) {
       const mediaMessage = new cometChat.MediaMessage(
@@ -411,55 +241,54 @@ const Chat = (props) => {
             setMessages(previousMessages => GiftedChat.append(previousMessages, messages))
           },
           error => {
-            console.log(error);
           }
         );
       }
     }
   };
 
-  const showMessage = (title, message) => {
-    Alert.alert(
-      title,
-      message
-    );
-  };
-
   const onSend = useCallback((messages = []) => {
     sendMessageCometChat(messages);
-  }, [])
+  }, []);
 
-  const onSelect = async () => {
-    // Pick a single file
-    try {
-      const resArr = await DocumentPicker.pick({
-        type: [DocumentPicker.types.allFiles],
-      });
-      const res = resArr && resArr.length !== 0 ? resArr[0] : null;
-      if (res && res.name && res.uri) {
-        const file = {
-          name: res.name,
-          uri: res.uri.replace("file://", ""),
-        };
-        setSelectedFile(() => file);
-      } else {
-        showMessage('Error', 'Cannot upload your file, please try again');
-      }
-    } catch (err) {
-      if (DocumentPicker.isCancel(err)) {
-        // User cancelled the picker, exit any dialogs or menus and move on
-      } else {
-        throw err
-      }
+  const getFileName = (fileName, type) => {
+    if (Platform.OS === 'android' && type === 'photo') {
+      return 'Camera_001.jpeg';
+    } else if (Platform.OS === 'android' && type.includes('video')) {
+      return 'Camera_001.mov'
     }
+    return fileName;
+  }
+
+  const handleSelectFile = () => {
+    const options = {
+      mediaType: 'mixed'
+    };
+    launchImageLibrary(options, (response) => {
+      if (response.didCancel) {
+        return null;
+      } else if (response.assets && response.assets.length !== 0) {
+        const uri = response.assets[0].uri;
+        const fileName = response.assets[0].fileName;
+        const type = response.assets[0].type;
+        if (uri && fileName) {
+          const file = {
+            name: getFileName(fileName, type),
+            uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+            type: type || 'video/quicktime'
+          };
+          setSelectedFile(() => file);
+        }
+      }
+    });
   };
 
   const renderActions = () => {
-    return (
-      <TouchableOpacity style={styles.select} onPress={onSelect}>
-        <Text style={styles.selectLabel}>Select</Text>
+    return (<View style={{ flexDirection: 'row', paddingBottom: 12 }}>
+      <TouchableOpacity style={styles.select} onPress={handleSelectFile}>
+        <Image source={imageIcon} style={{ width: 24, height: 24 }} />
       </TouchableOpacity>
-    );
+    </View>);
   };
 
   const getSource = (message) => {
@@ -491,99 +320,29 @@ const Chat = (props) => {
     return <></>;
   };
 
-  const cancelCall = () => {
-    const status = cometChat.CALL_STATUS.CANCELLED;
-    rejectCall(status, call);
-  };
-
-  const handleRejectCall = () => {
-    const status = cometChat.CALL_STATUS.REJECTED;
-    rejectCall(status, call);
-  };
-
-  const handleAcceptCall = () => {
-    acceptCall(call);
-  };
-
-  if (isSomeoneCalling && call) {
-    return (
-      <Modal animated animationType="fade">
-        <View style={styles.waitingForCallContainer}>
-          <Text style={styles.waitingForCallContainerTitle}>You are having a call from {call.sender.name}</Text>
-          <View style={styles.waitingForCallImageContainer}>
-            <Image style={{ width: 128, height: 128 }} source={{ uri: call.sender.avatar }}></Image>
-          </View>
-          <TouchableOpacity style={styles.acceptCallBtn} onPress={handleAcceptCall}>
-            <Text style={styles.acceptCallLabel}>Accept Call</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.cancelCallBtn} onPress={handleRejectCall}>
-            <Text style={styles.cancelCallLabel}>Reject Call</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-    );
-  }
-
-  if (callType && selectedConversation && !callSettings) {
-    return (
-      <Modal animated animationType="fade">
-        <View style={styles.waitingForCallContainer}>
-          <Text style={styles.waitingForCallContainerTitle}>Calling {selectedConversation.name}...</Text>
-          <View style={styles.waitingForCallImageContainer}>
-            <Image style={{ width: 128, height: 128 }} source={{ uri: selectedConversation.avatar }}></Image>
-          </View>
-          <TouchableOpacity style={styles.cancelCallBtn} onPress={cancelCall}>
-            <Text style={styles.cancelCallLabel}>Cancel Call</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-    );
-  }
-
-  if (callSettings) {
-    return (
-      <Modal animated animationType="fade">
-        <View style={styles.callingScreenContainer}>
-          <KeepAwake />
-          <cometChat.CallingComponent
-            callsettings={callSettings}
-          />
-        </View>
-      </Modal>
-    );
-  }
-
-  if (!callSettings) {
-    return (
-      <>
-        <View style={{ backgroundColor: '#fff', flex: 1 }}>
-          <GiftedChat
-            scrollToBottom
-            messages={messages}
-            onSend={messages => onSend(messages)}
-            user={{
-              _id: user.uid,
-              name: user.name,
-              avatar: user.avatar,
-            }}
-            renderActions={renderActions}
-            renderMessageVideo={renderVideo}
-            renderMessageAudio={renderVideo}
-          />
-        </View>
-      </>
-    )
-  }
+  return (
+    <>
+      <View style={{ backgroundColor: '#fff', flex: 1 }}>
+        <GiftedChat
+          scrollToBottom
+          messages={messages}
+          onSend={messages => onSend(messages)}
+          user={{
+            _id: user.uid,
+            name: user.name,
+            avatar: user.avatar,
+          }}
+          renderActions={renderActions}
+          renderMessageVideo={renderVideo}
+          renderMessageAudio={renderVideo}
+        />
+      </View>
+    </>
+  )
 };
 const styles = StyleSheet.create({
   select: {
-    alignSelf: 'center',
-    paddingLeft: 8,
-  },
-  selectLabel: {
-    color: '#3B82F6',
-    fontSize: 16,
-    fontWeight: 'bold',
+    paddingLeft: 8
   },
   videoContainer: {
     position: 'relative',
@@ -598,57 +357,6 @@ const styles = StyleSheet.create({
     width: 242,
     borderRadius: 20,
     margin: 4,
-  },
-  callingScreenContainer: {
-    height: '100%',
-    position: 'relative',
-    width: '100%',
-  },
-  waitingForCallContainer: {
-    flexDirection: 'column',
-    height: '100%',
-    position: 'relative',
-    width: '100%',
-    flex: 1,
-    paddingTop: 128
-  },
-  waitingForCallContainerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    paddingVertical: 12,
-    textAlign: 'center',
-  },
-  waitingForCallImageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelCallBtn: {
-    backgroundColor: '#EF4444',
-    borderRadius: 8,
-    fontSize: 16,
-    marginHorizontal: 24,
-    marginVertical: 8,
-    padding: 16,
-  },
-  cancelCallLabel: {
-    color: '#fff',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  acceptCallBtn: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 8,
-    fontSize: 16,
-    marginHorizontal: 24,
-    marginVertical: 8,
-    padding: 16,
-  },
-  acceptCallLabel: {
-    color: '#fff',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    textTransform: 'uppercase',
   },
   chatHeaderTitleContainer: {
     flexDirection: 'row'
