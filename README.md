@@ -14,7 +14,7 @@ This demo uses:
 - @cometchat-pro/react-native-chat
 - @react-native-async-storage/async-storage
 - @react-navigation/native
-- react-native-document-picker
+- react-native-image-picker
 - react-native-get-random-values
 - react-native-gifted-chat
 - react-native-keep-awake
