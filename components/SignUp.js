@@ -127,18 +127,21 @@ const SignUp = () => {
         autoCapitalize='none'
         onChangeText={onFullnameChanged}
         placeholder="Full name"
+        placeholderTextColor="#ccc"
         style={styles.input}
       />
       <TextInput
         autoCapitalize='none'
         onChangeText={onEmailChanged}
         placeholder="Email"
+        placeholderTextColor="#ccc"
         style={styles.input}
       />
       <TextInput
         autoCapitalize='none'
         onChangeText={onPasswordChanged}
         placeholder="Password"
+        placeholderTextColor="#ccc"
         secureTextEntry
         style={styles.input}
       />
@@ -146,6 +149,7 @@ const SignUp = () => {
         autoCapitalize='none'
         onChangeText={onConfirmPasswordChanged}
         placeholder="Confirm Password"
+        placeholderTextColor="#ccc"
         secureTextEntry
         style={styles.input}
       />
